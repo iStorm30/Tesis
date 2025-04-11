@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import BaseCallback
 from custom_game_env_nivel1 import CustomGameEnv1  # Importa el entorno personalizado
@@ -13,7 +13,7 @@ env = CustomGameEnv1(exe_path)
 check_env(env)
 
 # Configuración del agente DQN
-model = DQN("MlpPolicy", env, verbose=1, buffer_size=100000, learning_rate=1e-4, batch_size=128,
+model = PPO("MlpPolicy", env, verbose=1, buffer_size=100000, learning_rate=1e-4, batch_size=128,
             exploration_fraction=0.3, exploration_final_eps=0.05, target_update_interval=1000, gamma=0.99, train_freq=4, device="cuda")
 
 class RewardCallback(BaseCallback):
