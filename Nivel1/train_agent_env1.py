@@ -13,8 +13,7 @@ env = CustomGameEnv1(exe_path)
 check_env(env)
 
 # Configuración del agente DQN
-model = PPO("MlpPolicy", env, verbose=1, buffer_size=100000, learning_rate=1e-4, batch_size=128,
-            exploration_fraction=0.3, exploration_final_eps=0.05, target_update_interval=1000, gamma=0.99, train_freq=4, device="cuda")
+model = PPO("MlpPolicy", env, verbose=1, learning_rate=1e-4, batch_size=128,n_steps=1024,n_epochs=10, gamma=0.99,gae_lambda=0.95,clip_range=0.2,ent_coef=0.01, device="cuda")
 
 class RewardCallback(BaseCallback):
     def __init__(self, verbose=1):
