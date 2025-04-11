@@ -119,7 +119,7 @@ class CustomGameEnv1(gym.Env):
                 self.episode_reward_details["approach_goal"] += reward_gain
             else:
                 # Small penalty for moving away from the goal
-                reward_penalty = 2
+                reward_penalty = -2
                 reward += reward_penalty
                 self.episode_reward_details["move_away"] += reward_penalty
         else:
@@ -145,7 +145,7 @@ class CustomGameEnv1(gym.Env):
 
         if self.last_position == position:
             self.same_position_count += 1
-            if self.same_position_count >= 5:  # Verifica si ha permanecido en la misma posición por 5 o más pasos
+            if self.same_position_count >= 3:  # Verifica si ha permanecido en la misma posición por 5 o más pasos
                 no_move_penalty = -15  # Penalización por quedarse en la misma posición (cambiado a negativo)
                 reward += no_move_penalty
                 print("Penalty: Agent did not move for 5 or more steps.")
@@ -160,7 +160,7 @@ class CustomGameEnv1(gym.Env):
         self.current_step += 1
         if self.current_step >= self.max_steps:
             terminated = True
-            max_steps_penalty = -20
+            max_steps_penalty = -30
             reward += max_steps_penalty
             self.episode_reward_details["max_steps_penalty"] += max_steps_penalty
             print("Episode terminated: Max steps reached.")
@@ -170,6 +170,8 @@ class CustomGameEnv1(gym.Env):
         elapsed_time = time.time() - self.start_time
         if elapsed_time >= self.max_episode_time:
             terminated = True
+            timeout_penalty = -20
+            reward += timeout_penalty
             print("Episode terminated: Max real-time duration reached.")
 
         # State as position and end position
