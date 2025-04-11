@@ -23,6 +23,8 @@ class CustomGameEnv1(gym.Env):
         self.last_distance_to_goal = None  # Track the distance to the goal
         self.last_position = None
         self.same_position_count = 0
+        self.start_time = None
+        self.max_episode_time = 20  # en segundos, puedes ajustarlo
         self.episode_reward_details = {  # Initialize reward tracking
             "approach_goal": 0,
             "move_away": 0,
@@ -70,6 +72,8 @@ class CustomGameEnv1(gym.Env):
         self.last_distance_to_goal = None
         self.last_position = None
         self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
+
+        self.start_time = time.time()
 
         # Initial state (example structure)
         game_data = self.get_game_data()
@@ -162,6 +166,11 @@ class CustomGameEnv1(gym.Env):
             print("Episode terminated: Max steps reached.")
             print(f"Terminated status at end of step(): {terminated}")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False}
+        
+        elapsed_time = time.time() - self.start_time
+        if elapsed_time >= self.max_episode_time:
+            terminated = True
+            print("Episode terminated: Max real-time duration reached.")
 
         # State as position and end position
         if game_data:
