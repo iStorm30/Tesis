@@ -74,6 +74,7 @@ class CustomGameEnv2(gym.Env):
         self.last_distance_to_goal = None
         self.last_position = None
         self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
+        self.start_time = time.time()
 
         # Initial state (example structure)
         game_data = self.get_game_data()
