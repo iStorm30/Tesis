@@ -1,19 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import BaseCallback
 from custom_game_env_nivel2 import CustomGameEnv2  # Importa el entorno personalizado
 
 # Configuración del entorno
-exe_path = "C:\\Users\\ghost\\Documents\\TESIS\\Nivel2\\Abby's Redemption2SIN"
+exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel2\\Abby's Redemption2SIN"
 env = CustomGameEnv2(exe_path)
 
 # Verificar el entorno para asegurarse de que es compatible con Stable Baselines3
 check_env(env)
 
 # Cargar el modelo preentrenado
-model = DQN.load("dqn_custom_game_model", env=env, device="cuda")
+model = PPO.load("dqn_custom_game_model_PPO", env=env, device="cuda")
 
 # Modificar parámetros del modelo si es necesario
 # Ejemplo de modificación de parámetros:
@@ -26,6 +26,7 @@ class RewardCallback(BaseCallback):
         super(RewardCallback, self).__init__(verbose)
         self.episode_rewards = []  # Para almacenar recompensas acumuladas por episodio
         self.episode_steps = []  # Para almacenar el número de pasos por episodio
+        self.success_per_episode = []
         self.completion_count = 0  # Para contar episodios completados
         self.action_counts = [0] * env.action_space.n  # Contar el uso de cada acción
         self.current_reward = 0
@@ -67,6 +68,16 @@ class RewardCallback(BaseCallback):
         plt.xlabel("Episodios")
         plt.ylabel("Número de Pasos")
         plt.title("Número de Pasos por Episodio")
+
+        # Éxitos acumulados
+        plt.subplot(1, 3, 3)
+        episodes_success = list(range(1, len(self.success_per_episode) + 1))
+        plt.plot(episodes_success, np.cumsum(self.success_per_episode), label="Éxitos acumulados", color='green')
+        plt.xlabel("Episodios")
+        plt.ylabel("Total acumulado")
+        plt.title("Episodios Exitosos")
+        plt.grid(True)
+        plt.legend()
 
         plt.tight_layout()
         plt.show()

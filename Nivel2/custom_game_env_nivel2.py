@@ -7,7 +7,7 @@ from pynput.keyboard import Controller
 import requests
 
 class CustomGameEnv2(gym.Env):
-    def __init__(self, exe_path, max_steps=350):
+    def __init__(self, exe_path, max_steps=500):
         super(CustomGameEnv2, self).__init__()
         self.exe_path = exe_path
 
@@ -24,6 +24,8 @@ class CustomGameEnv2(gym.Env):
         self.last_position = None
         self.same_position_count = 0
         self.last_lives = 3
+        self.start_time = None
+        self.max_episode_time = 60
         self.episode_reward_details = {  # Initialize reward tracking
             "approach_goal": 0,
             "move_away": 0,
@@ -121,7 +123,7 @@ class CustomGameEnv2(gym.Env):
                 self.episode_reward_details["approach_goal"] += reward_gain
             else:
                 # Small penalty for moving away from the goal
-                reward_penalty = 2
+                reward_penalty = -2
                 reward += reward_penalty
                 self.episode_reward_details["move_away"] += reward_penalty
         else:
@@ -182,13 +184,21 @@ class CustomGameEnv2(gym.Env):
         self.current_step += 1
         if self.current_step >= self.max_steps:
             terminated = True
-            max_steps_penalty = 20
+            max_steps_penalty = -30
             reward += max_steps_penalty
             self.episode_reward_details["max_steps_penalty"] += max_steps_penalty
             print("Episode terminated: Max steps reached.")
             print(f"Terminated status at end of step(): {terminated}")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False, "lives": self.current_lives}
 
+        elapsed_time = time.time() - self.start_time
+        if elapsed_time >= self.max_episode_time:
+            terminated = True
+            timeout_penalty = -20
+            reward += timeout_penalty
+            print("Episode terminated: Max real-time duration reached.")
+
+        
         # State as position and end position
         if game_data:
             next_state = np.array(game_data["position"] + game_data["end_position"], dtype=np.float32)
