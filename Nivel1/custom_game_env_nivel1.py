@@ -7,7 +7,7 @@ from pynput.keyboard import Controller
 import requests
 
 class CustomGameEnv1(gym.Env):
-    def __init__(self, exe_path, max_steps=100):
+    def __init__(self, exe_path, max_steps=150):
         super(CustomGameEnv1, self).__init__()
         self.exe_path = exe_path
 
