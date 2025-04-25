@@ -7,12 +7,12 @@ from pynput.keyboard import Controller
 import requests
 
 class CustomGameEnv2(gym.Env):
-    def __init__(self, exe_path, max_steps=500):
+    def __init__(self, exe_path, max_steps= 650):
         super(CustomGameEnv2, self).__init__()
         self.exe_path = exe_path
 
         # Define action space and observation space
-        self.action_space = spaces.Discrete(3)  # 3 possible actions: left, right, up
+        self.action_space = spaces.Discrete(4)  # 3 possible actions: left, right, up, attack
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32)
 
         # Controller and environment variables
@@ -22,6 +22,8 @@ class CustomGameEnv2(gym.Env):
         self.game_process = None
         self.last_distance_to_goal = None  # Track the distance to the goal
         self.last_position = None
+        self.previus_position = None
+        self.current_position = None
         self.same_position_count = 0
         self.last_lives = 3
         self.start_time = None
@@ -73,6 +75,8 @@ class CustomGameEnv2(gym.Env):
         self.same_position_count = 0
         self.last_distance_to_goal = None
         self.last_position = None
+        self.previus_position = None
+        self.current_position = None
         self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
         self.start_time = time.time()
 
@@ -102,6 +106,7 @@ class CustomGameEnv2(gym.Env):
             self.move_right()
         elif action == 2:
             self.move_up()
+            self.action_name = "jump"
 
         game_data = self.get_game_data()
         terminated = False
@@ -152,19 +157,32 @@ class CustomGameEnv2(gym.Env):
             print(f"Episode terminated: Collided with the door (end position). Lives remaining: {self.current_lives}. Reward given: {goal_reward}")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": True, "lives": self.current_lives}
         
+        
+        if action == "jump":
+            salto_correcto = (
+            position[0] != self.previous_position[0] and  # Movimiento en X
+            position[1] != self.previous_position[1]  # Movimiento en Y
+        )
+        # Si el salto es exitoso y no se ha perdido vida
+        if salto_correcto:
+            if self.current_lives == self.last_lives:  # No se ha perdido vida
+                reward += 5  # Recompensa por salto exitoso
+            else:  # Si se ha perdido vida tras el salto
+                reward -= 10  # Penalización por salto con pérdida de vida
+
         if self.current_lives < self.last_lives:
             # Calculate penalty based on remaining lives
-            if self.current_lives == 2:
-                penalty = -5  # Mild penalty for losing first life
-            elif self.current_lives == 1:
-                penalty = -15  # Stronger penalty for losing second life
-            elif self.current_lives == 0:
-                penalty = -50  # Significant penalty for losing all lives
-                terminated = True  # End the episode if all lives are lost
-                print("Episode terminated: Agent lost all lives.")
-                return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False, "lives": self.current_lives}
+            penalty = -2  # Penalización ligera por cada vida perdida
             reward += penalty
             print(f"Penalty applied for losing a life: {penalty}")
+        elif self.current_lives == 0:
+            penalty = -30  # Significant penalty for losing all lives
+            reward += penalty
+            terminated = True  # End the episode if all lives are lost
+            print("Episode terminated: Agent lost all lives.")
+            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False, "lives": self.current_lives}
+        
+        print(f"Penalty applied for losing a life: {penalty}")
 
         self.last_lives = self.current_lives        
 
@@ -177,7 +195,12 @@ class CustomGameEnv2(gym.Env):
                 self.episode_reward_details["no_move_penalty"] += no_move_penalty
         else:
             self.same_position_count = 0 
-                    
+        
+        if action == "jump" and abs(position[0] - self.last_position[0]) < 0.1 and abs(position[1] - self.last_position[1]) < 0.1:
+            jump_penalty = -1  # Penalización por salto sin movimiento
+            reward += jump_penalty
+            print("Penalty applied for jumping without moving.")
+
         self.last_position = position
         self.last_distance_to_goal = distance_to_goal
 
@@ -199,7 +222,6 @@ class CustomGameEnv2(gym.Env):
             reward += timeout_penalty
             print("Episode terminated: Max real-time duration reached.")
 
-        
         # State as position and end position
         if game_data:
             next_state = np.array(game_data["position"] + game_data["end_position"], dtype=np.float32)
@@ -213,6 +235,9 @@ class CustomGameEnv2(gym.Env):
             print(f"Reward breakdown for the episode: {self.episode_reward_details}")
             # Reset the reward details for the next episode
             self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
+        
+        # Actualizar la posición anterior para el próximo paso
+        self.previous_position = position
 
         return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated, "lives": self.current_lives}
 
