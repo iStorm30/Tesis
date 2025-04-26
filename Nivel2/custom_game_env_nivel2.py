@@ -124,7 +124,7 @@ class CustomGameEnv2(gym.Env):
         if self.last_distance_to_goal is not None:
             if distance_to_goal < self.last_distance_to_goal:
                 # Reward for moving closer to the goal with a stable linear increase
-                reward_gain = max(0.1, 3* np.log1p(self.last_distance_to_goal - distance_to_goal))
+                reward_gain = max(0.1, 0.5* np.log1p(self.last_distance_to_goal - distance_to_goal))
                 reward += reward_gain
                 self.episode_reward_details["approach_goal"] += reward_gain
             else:
@@ -137,6 +137,10 @@ class CustomGameEnv2(gym.Env):
             initial_reward = min(5, 0.5 / (distance_to_goal + 1e-6))
             reward += initial_reward
             self.episode_reward_details["approach_goal"] += initial_reward
+
+        max_distance_reward = 5  # La recompensa máxima que se puede ganar por acercarse al objetivo
+        reward_gain = min(max_distance_reward, reward)  # Limita la recompensa
+        reward = reward_gain
 
             # Check if the agent has collided with the door
         if self.final == True:
@@ -157,7 +161,7 @@ class CustomGameEnv2(gym.Env):
             print(f"Episode terminated: Collided with the door (end position). Lives remaining: {self.current_lives}. Reward given: {goal_reward}")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": True, "lives": self.current_lives}
         
-        
+        salto_correcto = False
         if action == "jump":
             salto_correcto = (
             position[0] != self.previous_position[0] and  # Movimiento en X
@@ -181,8 +185,6 @@ class CustomGameEnv2(gym.Env):
             terminated = True  # End the episode if all lives are lost
             print("Episode terminated: Agent lost all lives.")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False, "lives": self.current_lives}
-        
-        print(f"Penalty applied for losing a life: {penalty}")
 
         self.last_lives = self.current_lives        
 
