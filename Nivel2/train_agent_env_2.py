@@ -80,7 +80,8 @@ class RewardCallback(BaseCallback):
         plt.legend()
 
         plt.tight_layout()
-        plt.show()
+        plt.savefig("training_metrics.png")  # Guarda la figura como imagen
+        plt.close()  # Cierra la figura para liberar memoria
 
         # Mostrar estadísticas de métricas adicionales
         print(f"\nEstadísticas de Entrenamiento:")
