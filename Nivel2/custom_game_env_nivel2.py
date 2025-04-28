@@ -9,6 +9,7 @@ import requests
 class CustomGameEnv2(gym.Env):
     def __init__(self, exe_path, max_steps= 650):
         super(CustomGameEnv2, self).__init__()
+        
         self.exe_path = exe_path
 
         # Define action space and observation space
@@ -66,10 +67,10 @@ class CustomGameEnv2(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        if self.game_process:
-            self.game_process.terminate()
-        self.launch_game()
-        time.sleep(1)
+        #if self.game_process:
+            #self.game_process.terminate()
+        #self.launch_game()
+        #time.sleep(1)
 
         self.current_step = 0
         self.same_position_count = 0
@@ -91,10 +92,10 @@ class CustomGameEnv2(gym.Env):
         else:
             return np.zeros(4, dtype=np.float32), {}
 
-    def launch_game(self):
+    #def launch_game(self):
         # Launch the game process
-        self.game_process = subprocess.Popen(self.exe_path)
-        time.sleep(2)  # Wait for the game to load
+        #self.game_process = subprocess.Popen(self.exe_path)
+        #time.sleep(2)  # Wait for the game to load
 
     def step(self, action):
         reward = 0  # Initialize reward
@@ -244,21 +245,25 @@ class CustomGameEnv2(gym.Env):
         return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated, "lives": self.current_lives}
 
     def close(self):
-        if self.game_process:
-            self.game_process.terminate()
+        #if self.game_process:
+            #self.game_process.terminate()
+        pass
 
     # Movement functions
     def move_left(self):
-        self.keyboard.press('a')
-        time.sleep(0.5)
-        self.keyboard.release('a')
+        #self.keyboard.press('a')
+        #time.sleep(0.5)
+        #self.keyboard.release('a')
+        print("[Simulación] Acción: Mover a la izquierda")
 
     def move_right(self):
-        self.keyboard.press('d')
-        time.sleep(0.5)
-        self.keyboard.release('d')
+        #self.keyboard.press('d')
+        #time.sleep(0.5)
+        #self.keyboard.release('d')
+        print("[Simulación] Acción: Mover a la derecha")
     
     def move_up(self):
-        self.keyboard.press('w')
-        time.sleep(0.3)
-        self.keyboard.release('w')
+        #self.keyboard.press('w')
+        #time.sleep(0.3)
+        #self.keyboard.release('w')
+        print("[Simulación] Acción: Saltar")
