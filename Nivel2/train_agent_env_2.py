@@ -93,7 +93,7 @@ class RewardCallback(BaseCallback):
 reward_callback = RewardCallback()
 
 # Continuar entrenando el agente con el modelo cargado y el callback
-model.learn(total_timesteps=20000, callback=reward_callback)
+model.learn(total_timesteps=5000, callback=reward_callback)
 
 # Guardar el modelo actualizado
 model.save("dqn_custom_game_model_updated_PPO")
