@@ -55,7 +55,7 @@ class RewardCallback(BaseCallback):
     def plot_metrics(self):
         # Gráfico de recompensas por episodio
         plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         episodes = list(range(1, len(self.episode_rewards) + 1))
         plt.plot(episodes, self.episode_rewards)
         plt.xlabel("Episodios")
@@ -63,7 +63,7 @@ class RewardCallback(BaseCallback):
         plt.title("Progreso del Agente en Recompensas")
 
         # Gráfico de número de pasos por episodio
-        plt.subplot(1, 2, 2)
+        plt.subplot(1, 3, 2)
         plt.plot(episodes, self.episode_steps)
         plt.xlabel("Episodios")
         plt.ylabel("Número de Pasos")
