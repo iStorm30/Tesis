@@ -67,10 +67,10 @@ class CustomGameEnv2(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        #if self.game_process:
-            #self.game_process.terminate()
-        #self.launch_game()
-        #time.sleep(1)
+        if self.game_process:
+            self.game_process.terminate()
+        self.launch_game()
+        time.sleep(1)
 
         self.current_step = 0
         self.same_position_count = 0
@@ -92,10 +92,10 @@ class CustomGameEnv2(gym.Env):
         else:
             return np.zeros(4, dtype=np.float32), {}
 
-    #def launch_game(self):
+    def launch_game(self):
         # Launch the game process
-        #self.game_process = subprocess.Popen(self.exe_path)
-        #time.sleep(2)  # Wait for the game to load
+        self.game_process = subprocess.Popen(self.exe_path)
+        time.sleep(2)  # Wait for the game to load
 
     def step(self, action):
         reward = 0  # Initialize reward
