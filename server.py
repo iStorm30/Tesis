@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
+from multiprocessing import Manager
+import uvicorn
 
 app = FastAPI()
+
+manager = Manager()
+game_data = manager.list()
 
 class Position(BaseModel):
     x: float
@@ -16,7 +21,7 @@ class GameData(BaseModel):
     final: bool
     
 # Endpoints para cada dato
-game_data = []
+#game_data = []
 
 @app.post("/api/update_game_data")
 def update_game_data(data: GameData):
@@ -36,4 +41,17 @@ def update_game_data(data: GameData):
 
 @app.get("/api/game_data")
 def get_game_data():
-    return game_data
+    return list(game_data)
+    # return game_data
+
+@app.get("/api/game_data/latest")
+def get_latest_game_data():
+    return game_data[-1] if game_data else {"error": "No data available"}
+
+@app.delete("/api/clear_game_data")
+def clear_game_data():
+    game_data[:] = []  # Limpia la lista compartida
+    return {"status": "cleared"}
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, workers=4)

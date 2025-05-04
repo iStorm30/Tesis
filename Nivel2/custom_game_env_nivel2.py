@@ -7,10 +7,12 @@ from pynput.keyboard import Controller
 import requests
 
 class CustomGameEnv2(gym.Env):
-    def __init__(self, exe_path, max_steps= 650):
+    def __init__(self, exe_path,api_port=8000, max_steps= 650):
         super(CustomGameEnv2, self).__init__()
         
         self.exe_path = exe_path
+        self.api_port = api_port
+        self.process = None
 
         # Define action space and observation space
         self.action_space = spaces.Discrete(4)  # 3 possible actions: left, right, up, attack
@@ -94,8 +96,13 @@ class CustomGameEnv2(gym.Env):
 
     def launch_game(self):
         # Launch the game process
-        self.game_process = subprocess.Popen(self.exe_path)
-        time.sleep(2)  # Wait for the game to load
+        #self.game_process = subprocess.Popen(self.exe_path)
+        #time.sleep(2)  # Wait for the game to load
+        
+        # Lanzar el juego con el argumento del puerto
+        print(f"Lanzando juego en puerto {self.api_port}...")
+        self.process = subprocess.Popen([self.exe_path, f"--port={self.api_port}"])
+        time.sleep(2)  # Tiempo para que el servidor interno se inicie
 
     def step(self, action):
         reward = 0  # Initialize reward
@@ -245,25 +252,28 @@ class CustomGameEnv2(gym.Env):
         return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated, "lives": self.current_lives}
 
     def close(self):
-        #if self.game_process:
+        if self.game_process:
             #self.game_process.terminate()
-        pass
+            print(f"Cerrando instancia en puerto {self.api_port}")
+            self.process.terminate()
+            self.process = None
+        #pass
 
     # Movement functions
     def move_left(self):
-        #self.keyboard.press('a')
-        #time.sleep(0.5)
-        #self.keyboard.release('a')
+        self.keyboard.press('a')
+        time.sleep(0.1)
+        self.keyboard.release('a')
         print("[Simulación] Acción: Mover a la izquierda")
 
     def move_right(self):
-        #self.keyboard.press('d')
-        #time.sleep(0.5)
-        #self.keyboard.release('d')
+        self.keyboard.press('d')
+        time.sleep(0.1)
+        self.keyboard.release('d')
         print("[Simulación] Acción: Mover a la derecha")
     
     def move_up(self):
-        #self.keyboard.press('w')
-        #time.sleep(0.3)
-        #self.keyboard.release('w')
+        self.keyboard.press('w')
+        time.sleep(0.1)
+        self.keyboard.release('w')
         print("[Simulación] Acción: Saltar")
