@@ -6,7 +6,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from custom_game_env_nivel1 import CustomGameEnv1  # Importa el entorno personalizado
 
 # Configuración del entorno
-exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1\\Abby's Redemption1SIN"
+exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1Headless\\Abby's Redemption-PruebaHeadless.console"
 env = CustomGameEnv1(exe_path)
 
 # Verificar el entorno para asegurarse de que es compatible con Stable Baselines3

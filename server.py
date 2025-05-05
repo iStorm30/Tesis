@@ -1,10 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
-import uvicorn
 
 app = FastAPI()
-
 
 class Position(BaseModel):
     x: float
@@ -38,10 +36,5 @@ def update_game_data(data: GameData):
 
 @app.get("/api/game_data")
 def get_game_data():
-    return list(game_data)
-    # return game_data
-
-@app.get("/api/game_data/latest")
-def get_latest_game_data():
-    return game_data[-1] if game_data else {"error": "No data available"}
+     return game_data
 
