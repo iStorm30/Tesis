@@ -6,8 +6,8 @@ from stable_baselines3.common.callbacks import BaseCallback
 from custom_game_env_nivel1 import CustomGameEnv1  # Importa el entorno personalizado
 
 # Configuración del entorno
-exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1Headless\\Abby's Redemption-PruebaHL2.console"
-env = CustomGameEnv1(exe_path)
+exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1Headless\\Abby's Redemption-PruebaHL-Nivel1.console"
+env = CustomGameEnv1(exe_path, api_port=8000)
 
 # Verificar el entorno para asegurarse de que es compatible con Stable Baselines3
 check_env(env)
@@ -60,8 +60,19 @@ class RewardCallback(BaseCallback):
         plt.xlabel("Episodios")
         plt.ylabel("Número de Pasos")
         plt.title("Número de Pasos por Episodio")
+            
+        # Éxitos acumulados
+        plt.subplot(1, 3, 3)
+        episodes_success = list(range(1, len(self.success_per_episode) + 1))
+        plt.plot(episodes_success, np.cumsum(self.success_per_episode), label="Éxitos acumulados", color='green')
+        plt.xlabel("Episodios")
+        plt.ylabel("Total acumulado")
+        plt.title("Episodios Exitosos")
+        plt.grid(True)
+        plt.legend()
 
         plt.tight_layout()
+        plt.savefig("training_metrics.png")  # Guarda la figura como imagen
         plt.show()
 
         # Mostrar estadísticas de métricas adicionales

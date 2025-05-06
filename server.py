@@ -18,6 +18,14 @@ class GameData(BaseModel):
 # Endpoints para cada dato
 game_data = []
 
+# Mantiene el último comando enviado por la IA
+command_data = {
+    "left": False,
+    "right": False,
+    "jump": False
+}
+
+
 @app.post("/api/update_game_data")
 def update_game_data(data: GameData):
     # Agregar un timestamp (opcional) para cada entrada
@@ -38,3 +46,22 @@ def update_game_data(data: GameData):
 def get_game_data():
      return game_data
 
+@app.post("/api/command")
+def post_command(cmd: dict):
+    """
+    Recibe un JSON con {'left': bool, 'right': bool, 'jump': bool}
+    y actualiza command_data.
+    """
+    command_data.update({
+        "left":  cmd.get("left", False),
+        "right": cmd.get("right", False),
+        "jump":  cmd.get("jump", False),
+    })
+    return {"status": "ok"}
+
+@app.get("/api/command/latest")
+def get_command():
+    """
+    Devuelve el último comando para que Godot lo consulte.
+    """
+    return command_data
