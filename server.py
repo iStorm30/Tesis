@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
-
+from multiprocessing import Manager
+import uvicorn
 app = FastAPI()
-
+manager    = Manager()
+game_data  = manager.list()
+# Aquí guardamos el último comando de movimiento
+command_data = manager.dict({"left": False, "right": False, "jump": False})
 class Position(BaseModel):
     x: float
     y: float
