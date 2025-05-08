@@ -197,12 +197,12 @@ class CustomGameEnv1(gym.Env):
     # Movement functions
     def move_left(self):
         self.keyboard.press('a')
-        time.sleep(0.5)
+        time.sleep(0.05)
         self.keyboard.release('a')
 
     def move_right(self):
         self.keyboard.press('d')
-        time.sleep(0.5)
+        time.sleep(0.05)
         self.keyboard.release('d')
 
 

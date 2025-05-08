@@ -41,7 +41,7 @@ class CustomGameEnv1(gym.Env):
         cmd = {
             "left":  bool(action == 0),
             "right": bool(action == 1),
-            "jump":  bool(action == 2)  # si en este env tienes salto
+            #"jump":  bool(action == 2)  # si en este env tienes salto
         }
         try:
             requests.post(
@@ -52,7 +52,7 @@ class CustomGameEnv1(gym.Env):
         except requests.exceptions.RequestException:
             pass
         
-        time.sleep(0.05)
+        time.sleep(0.3)
 
 
     def get_game_data(self):
@@ -114,7 +114,7 @@ class CustomGameEnv1(gym.Env):
 
     def step(self, action):
         
-        t0 = time.time()
+        #t0 = time.time()
 
         self._send_command(action)
         reward = 0  # Initialize reward
@@ -127,36 +127,36 @@ class CustomGameEnv1(gym.Env):
 
         game_data = self.get_game_data()
         
-        t1 = time.time()
-        real_dt = t1 - t0
+        #t1 = time.time()
+        #real_dt = t1 - t0
         
         terminated = False
         truncated = False
 
-        sim_ts_str = game_data.get("timestamp")  # ej. "2025-05-06T00:12:34.567890"
-        ts_str = str(sim_ts_str)
+        #sim_ts_str = game_data.get("timestamp")  # ej. "2025-05-06T00:12:34.567890"
+        #ts_str = str(sim_ts_str)
 
         #if self.last_position is None or position != self.last_position:
             #self.last_moved_time = time.time()
         #self.last_position = position
 
         # DEBUG: imprime el valor y su tipo para saber qué recibes
-        print(f"[Perf][DEBUG] raw timestamp: {sim_ts_str!r} (type: {type(sim_ts_str)})")
+        #print(f"[Perf][DEBUG] raw timestamp: {sim_ts_str!r} (type: {type(sim_ts_str)})")
 
-        try:
-            sim_ts = datetime.datetime.fromisoformat(ts_str)
-        except Exception:
-            print(f"[Perf] No pude parsear '{ts_str}', usando ahora()")
-            sim_ts = datetime.datetime.now()
+        #try:
+            #sim_ts = datetime.datetime.fromisoformat(ts_str)
+        #except Exception:
+            #print(f"[Perf] No pude parsear '{ts_str}', usando ahora()")
+            #sim_ts = datetime.datetime.now()
 
-        if hasattr(self, "last_sim_ts"):
-            sim_dt = (sim_ts - self.last_sim_ts).total_seconds()
-            ratio = sim_dt / real_dt if real_dt > 0 else float("inf")
-            print(f"[Perf] real_dt={real_dt:.3f}s | sim_dt={sim_dt:.3f}s | ratio={ratio:.2f}×")
-        else:
-            print(f"[Perf] primer paso, real_dt={real_dt:.3f}s")
+        #if hasattr(self, "last_sim_ts"):
+            #sim_dt = (sim_ts - self.last_sim_ts).total_seconds()
+            #ratio = sim_dt / real_dt if real_dt > 0 else float("inf")
+            #print(f"[Perf] real_dt={real_dt:.3f}s | sim_dt={sim_dt:.3f}s | ratio={ratio:.2f}×")
+        #else:
+            #print(f"[Perf] primer paso, real_dt={real_dt:.3f}s")
 
-        self.last_sim_ts = sim_ts
+        #self.last_sim_ts = sim_ts
 
         if game_data:
             position = tuple(game_data["position"])
@@ -195,7 +195,7 @@ class CustomGameEnv1(gym.Env):
 
         if self.last_position == position:
             self.same_position_count += 1
-            if self.same_position_count >= 5:  # Verifica si ha permanecido en la misma posición por 5 o más pasos
+            if self.same_position_count >= 3:  # Verifica si ha permanecido en la misma posición por 3 o más pasos
                 no_move_penalty = -15  # Penalización por quedarse en la misma posición (cambiado a negativo)
                 reward += no_move_penalty
                 print("Penalty: Agent did not move for 5 or more steps.")
@@ -250,23 +250,23 @@ class CustomGameEnv1(gym.Env):
         return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated}
 
     def close(self):
-        #if self.game_process:
-            #self.game_process.terminate()
+        if self.game_process:
+            self.game_process.terminate()
                 # Primero limpia el entorno de Gym
-        try:
-            super().close()
-        except Exception:
-            pass
+        #try:
+            #super().close()
+        #except Exception:
+            #pass
 
         # Luego cierra el proceso de Godot si sigue vivo
-        if hasattr(self, "game_process") and self.game_process:
-            self.game_process.terminate()  # SIGTERM
-            try:
-                self.game_process.wait(timeout=5)  # espera hasta 5 s
-            except subprocess.TimeoutExpired:
-                self.game_process.kill()       # SIGKILL si no responde
-            finally:
-                self.game_process = None
+        #if hasattr(self, "game_process") and self.game_process:
+            #self.game_process.terminate()  # SIGTERM
+            #try:
+                #self.game_process.wait(timeout=5)  # espera hasta 5 s
+            #except subprocess.TimeoutExpired:
+                #self.game_process.kill()       # SIGKILL si no responde
+            #finally:
+                #self.game_process = None
 
     # Movement functions
     #def move_left(self):
