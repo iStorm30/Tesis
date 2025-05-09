@@ -12,11 +12,13 @@ class CustomGameEnv1(gym.Env):
         self.api_port = api_port
         # Define action space and observation space
         self.action_space = spaces.Discrete(4)  
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32)
+        self.current_step = 0
         self.game_process = None
         self.last_distance_to_goal = None  # Track the distance to the goal
         self.last_position = None
         self.same_position_count = 0
+        self.has_started = False 
         self.episode_reward_details = {  # Initialize reward tracking
             "approach_goal": 0,
             "move_away": 0,
@@ -44,6 +46,27 @@ class CustomGameEnv1(gym.Env):
         
         time.sleep(0.3)
 
+    def get_level_event(self):
+        """
+        Devuelve el último evento de nivel con campos 'timer' y 'reset'.
+        """
+        try:
+            resp = requests.get(f"http://127.0.0.1:{self.api_port}/api/level_event")
+            resp.raise_for_status()
+            events = resp.json()
+
+            if not events:  # Si la lista está vacía
+                print("Warning: No level events received.")
+                return {"timer": 10.0, "reset": False}  # Valor predeterminado
+
+            last = events[-1]
+            return {
+                "timer": float(last["timer"]),
+                "reset": bool(last["reset"])
+            }
+        except requests.exceptions.RequestException as e:
+            print("Error fetching level event:", e)
+            return {"timer": 10.0, "reset": False}  # Valor predeterminado en caso de error
 
     def get_game_data(self):
         try:
@@ -71,13 +94,17 @@ class CustomGameEnv1(gym.Env):
             print("Error converting game data:", e)
             return None
         
+    def launch_game(self):
+        # Launch the game process
+        self.game_process = subprocess.Popen(self.exe_path)
+        time.sleep(2)  # Wait for the game to load
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        if self.game_process:
-            self.game_process.terminate()
-        self.launch_game()
-        time.sleep(1)
+        if not self.has_started:
+            self.launch_game()
+            self.has_started = True
 
         self.current_step = 0
         self.same_position_count = 0
@@ -85,7 +112,6 @@ class CustomGameEnv1(gym.Env):
         self.last_position = None
         self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
 
-        self.start_time = time.time()
 
         # Initial state (example structure)
         game_data = self.get_game_data()
@@ -97,20 +123,18 @@ class CustomGameEnv1(gym.Env):
         else:
             return np.zeros(4, dtype=np.float32), {}
 
-    def launch_game(self):
-        # Launch the game process
-        self.game_process = subprocess.Popen(self.exe_path)
-        time.sleep(2)  # Wait for the game to load
-
     def step(self, action):
 
         self._send_command(action)
         reward = 0  # Initialize reward
 
         game_data = self.get_game_data()
+        le = self.get_level_event()
     
         terminated = False
         truncated = False
+        # Increment the step count and check if max steps are reached
+        self.current_step += 1
 
         if game_data:
             position = tuple(game_data["position"])
@@ -144,8 +168,27 @@ class CustomGameEnv1(gym.Env):
             reward += goal_reward
             self.episode_reward_details["goal_reached"] += goal_reward
             print("Episode terminated: Collided with the door (end position).")
+            print(f"Episode terminated after {self.current_step} steps.")
             print(f"Terminated status at end of step(): {terminated}")
-            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": True}       
+            return np.array(position + end_position, dtype=np.float32), reward, truncated, {"final": self.final, "is_success": True} 
+
+        if le and le["reset"] == True:
+            terminated = True
+            reset_penalty = -5  # Penalización opcional por reinicio, ajusta según sea necesario
+            reward += reset_penalty
+            self.episode_reward_details["reset_penalty"] = reset_penalty
+            print("Episode terminated: Reset event triggered by the API.")
+            print(f"Episode terminated after {self.current_step} steps.")
+            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False}     
+
+        if  le and le["timer"] <= 0:
+            terminated = True
+            penalty = -10
+            reward += penalty
+            self.episode_reward_details["penalty_timeout"] += penalty
+            print("Episode terminated: Max real-time duration reached.")
+            print(f"Episode terminated after {self.current_step} steps.")
+            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False} 
 
         if self.last_position == position:
             self.same_position_count += 1
@@ -159,25 +202,6 @@ class CustomGameEnv1(gym.Env):
                    
         self.last_position = position
         self.last_distance_to_goal = distance_to_goal
-
-
-        # Increment the step count and check if max steps are reached
-        self.current_step += 1
-        if self.current_step >= self.max_steps:
-            terminated = True
-            max_steps_penalty = -30
-            reward += max_steps_penalty
-            self.episode_reward_details["max_steps_penalty"] += max_steps_penalty
-            print("Episode terminated: Max steps reached.")
-            print(f"Terminated status at end of step(): {terminated}")
-            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False}
-        
-        elapsed_time = time.time() - self.start_time
-        if elapsed_time >= self.max_episode_time:
-            terminated = True
-            timeout_penalty = -20
-            reward += timeout_penalty
-            print("Episode terminated: Max real-time duration reached.")
 
         # State as position and end position
         if game_data:
@@ -197,6 +221,8 @@ class CustomGameEnv1(gym.Env):
 
     def close(self):
         if self.game_process:
+            print("Closing the game process...")
             self.game_process.terminate()
+            self.game_process = None
 
 

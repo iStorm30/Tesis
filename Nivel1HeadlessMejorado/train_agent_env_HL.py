@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import BaseCallback
-from custom_game_env_nivel1 import CustomGameEnv1  # Importa el entorno personalizado
+from custom_game_env_nivel_HL import CustomGameEnv1  # Importa el entorno personalizado
 
 # Configuración del entorno
-exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1Headless\\Abby's Redemption-PruebaHL-Nivel1.console"
+exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Nivel1HeadlessMejorado\\Abby's Redemption-PruebaHL-Nivel1.console"
 env = CustomGameEnv1(exe_path, api_port=8000)
 
 # Verificar el entorno para asegurarse de que es compatible con Stable Baselines3
@@ -20,6 +20,7 @@ class RewardCallback(BaseCallback):
         super(RewardCallback, self).__init__(verbose)
         self.episode_rewards = []  # Para almacenar recompensas acumuladas por episodio
         self.episode_steps = []  # Para almacenar el número de pasos por episodio
+        self.success_per_episode = []  # Lista para registrar éxitos por episodio
         self.completion_count = 0  # Para contar episodios completados
         self.action_counts = [0] * env.action_space.n  # Contar el uso de cada acción
         self.current_reward = 0
@@ -35,10 +36,11 @@ class RewardCallback(BaseCallback):
         if self.locals["dones"][0]:  # Cuando el episodio termina
             self.episode_rewards.append(self.current_reward)
             self.episode_steps.append(self.current_steps)
-            print(f"Episodio terminado. Recompensa acumulada: {self.current_reward}, Pasos: {self.current_steps}")
-            # Contar episodios completados si aplica
-            if self.locals.get("infos", [{}])[0].get("is_success", False):
+            is_success = self.locals.get("infos", [{}])[0].get("is_success", False)
+            self.success_per_episode.append(1 if is_success else 0)  # 1 si es exitoso, 0 si no
+            if is_success:
                 self.completion_count += 1
+            print(f"Episodio terminado. Recompensa acumulada: {self.current_reward}, Pasos: {self.current_steps}, Éxito: {is_success}")
             self.current_reward = 0
             self.current_steps = 0
 
@@ -46,7 +48,7 @@ class RewardCallback(BaseCallback):
 
     def plot_metrics(self):
         # Gráfico de recompensas por episodio
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(15, 5))
         plt.subplot(1, 3, 1)
         episodes = list(range(1, len(self.episode_rewards) + 1))
         plt.plot(episodes, self.episode_rewards)
