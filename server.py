@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
 from multiprocessing import Manager
+from typing import Optional
 import uvicorn
 app = FastAPI()
 manager    = Manager()
@@ -26,7 +27,8 @@ game_data = []
 command_data = {
     "left": False,
     "right": False,
-    "jump": False
+    "jump": False,
+    "attack" : False
 }
 
 
@@ -39,7 +41,7 @@ def update_game_data(data: GameData):
         "souls": data.souls,
         "position": {"x": data.position.x, "y": data.position.y},
         "end_position": {"x": data.end_position.x, "y": data.end_position.y},
-        "final": data.final
+        "final": data.final,
 
     }
     # Agregar el nuevo registro a la lista
@@ -60,6 +62,7 @@ def post_command(cmd: dict):
         "left":  cmd.get("left", False),
         "right": cmd.get("right", False),
         "jump":  cmd.get("jump", False),
+        "attack": cmd.get("attack",False)
     })
     return {"status": "ok"}
 
@@ -69,3 +72,11 @@ def get_command():
     Devuelve el último comando para que Godot lo consulte.
     """
     return command_data
+
+@app.post("/api/level_event")
+def level_event(evt: dict):
+    # evt = {"timer":0.0, "reset":True}
+    entry = {"timestamp": datetime.now().isoformat(), **evt}
+    game_data.append(entry)
+    
+    return {"status":"ok"}
