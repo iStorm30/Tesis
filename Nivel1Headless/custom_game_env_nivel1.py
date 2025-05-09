@@ -21,7 +21,7 @@ class CustomGameEnv1(gym.Env):
         # Controller and environment variables
         #self.keyboard = Controller()
         self.current_step = 0
-        self.max_steps = max_steps
+        self.max_steps = max_steps #se elimino
         self.game_process = None
         self.last_distance_to_goal = None  # Track the distance to the goal
         self.last_position = None

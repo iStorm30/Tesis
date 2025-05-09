@@ -44,29 +44,29 @@ class CustomGameEnv1(gym.Env):
         except requests.exceptions.RequestException:
             pass
         
-        time.sleep(0.3)
+        #time.sleep(0.3)
 
     def get_level_event(self):
         """
         Devuelve el último evento de nivel con campos 'timer' y 'reset'.
         """
         try:
-            resp = requests.get(f"http://127.0.0.1:{self.api_port}/api/level_event")
+            resp = requests.post(f"http://127.0.0.1:{self.api_port}/api/level_event")
             resp.raise_for_status()
             events = resp.json()
 
             if not events:  # Si la lista está vacía
                 print("Warning: No level events received.")
-                return {"timer": 10.0, "reset": False}  # Valor predeterminado
+                return None  # Valor predeterminado
 
             last = events[-1]
             return {
-                "timer": float(last["timer"]),
-                "reset": bool(last["reset"])
+                "timer": float(last("timer", 0.0)),  # Cambiado a 0.0 por defecto
+                "reset": bool(last.post("reset", False))  # Cambiado a False por defecto
             }
         except requests.exceptions.RequestException as e:
             print("Error fetching level event:", e)
-            return {"timer": 10.0, "reset": False}  # Valor predeterminado en caso de error
+            return None  # Valor predeterminado en caso de error
 
     def get_game_data(self):
         try:
@@ -159,20 +159,13 @@ class CustomGameEnv1(gym.Env):
             # Initial reward based on the distance, capped to avoid large values
             initial_reward = min(5, 0.5 / (distance_to_goal + 1e-6))
             reward += initial_reward
-            self.episode_reward_details["approach_goal"] += initial_reward
+            self.episode_reward_details["approach_goal"] += initial_reward 
 
-            # Check if the agent has collided with the door
-        if self.final == True:
-            terminated = True
-            goal_reward = 15  # Significant reward for reaching the goal
-            reward += goal_reward
-            self.episode_reward_details["goal_reached"] += goal_reward
-            print("Episode terminated: Collided with the door (end position).")
-            print(f"Episode terminated after {self.current_step} steps.")
-            print(f"Terminated status at end of step(): {terminated}")
-            return np.array(position + end_position, dtype=np.float32), reward, truncated, {"final": self.final, "is_success": True} 
+        if le:
+            timer = float(le["timer"])
+            reset = bool(le["reset", False])
 
-        if le and le["reset"] == True:
+        if reset == True:
             terminated = True
             reset_penalty = -5  # Penalización opcional por reinicio, ajusta según sea necesario
             reward += reset_penalty
@@ -181,7 +174,7 @@ class CustomGameEnv1(gym.Env):
             print(f"Episode terminated after {self.current_step} steps.")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False}     
 
-        if  le and le["timer"] <= 0:
+        if  timer <= 0:
             terminated = True
             penalty = -10
             reward += penalty
@@ -189,6 +182,17 @@ class CustomGameEnv1(gym.Env):
             print("Episode terminated: Max real-time duration reached.")
             print(f"Episode terminated after {self.current_step} steps.")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False} 
+        
+        # Check if the agent has collided with the door
+        if self.final == True:
+            terminated = True
+            goal_reward = 15  # Significant reward for reaching the goal
+            reward += goal_reward
+            self.episode_reward_details["goal_reached"] += goal_reward
+            print("Episode terminated: Collided with the door (end position).")
+            print(f"Episode terminated after {self.current_step} steps.")
+            print(f"Terminated status at end of step(): {terminated}")
+            return np.array(position + end_position, dtype=np.float32), reward,terminated, truncated, {"final": self.final, "is_success": True}
 
         if self.last_position == position:
             self.same_position_count += 1
