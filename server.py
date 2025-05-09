@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from datetime import datetime
-from multiprocessing import Manager
-from typing import Optional
-import uvicorn
 
 app = FastAPI()
 
@@ -85,3 +82,8 @@ def get_last_level_event():
     if not level_events:
         return {"timer": 0.0, "reset": False}
     return level_events[-1]
+
+@app.delete("/api/level_event")
+def clear_level_event():
+    level_events.clear()
+    return {"status":"cleared"}

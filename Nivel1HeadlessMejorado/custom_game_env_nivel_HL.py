@@ -19,13 +19,19 @@ class CustomGameEnv1(gym.Env):
         self.last_position = None
         self.same_position_count = 0
         self.has_started = False 
+        self._reset_consumed = False
         self.episode_reward_details = {  # Initialize reward tracking
             "approach_goal": 0,
             "move_away": 0,
             "goal_reached": 0,
             "no_move_penalty": 0,
-            "max_steps_penalty": 0
+            "max_steps_penalty": 0,
+            "penalty_timeout":  0,
+            "reset_penalty":   0
         }
+        # ← Aquí creas tu sesión persistente
+        self._http = requests.Session()
+        self._http.headers.update({"Connection": "keep-alive"})
     
     def _send_command(self, action: int):
     #\"\"\"Envía el comando de movimiento a Godot via HTTP POST.\"\"\"
@@ -36,7 +42,7 @@ class CustomGameEnv1(gym.Env):
             #"attack: bool(action == 3)" # si en este env tienes ataque
         }
         try:
-            requests.post(
+            self._http.post(
                 f"http://127.0.0.1:{self.api_port}/api/command",
                 json=cmd,
                 timeout=0.1
@@ -44,33 +50,40 @@ class CustomGameEnv1(gym.Env):
         except requests.exceptions.RequestException:
             pass
         
-        #time.sleep(0.3)
+        time.sleep(0.3)
 
     def get_level_event(self):
         """
         Devuelve el último evento de nivel con campos 'timer' y 'reset'.
         """
         try:
-            resp = requests.get(f"http://127.0.0.1:{self.api_port}/api/level_event/latest")
+            resp = self._http.get(f"http://127.0.0.1:{self.api_port}/api/level_event/latest")
             resp.raise_for_status()
-            events = resp.json()
+            event = resp.json()
 
-            if not events:  # Si la lista está vacía
-                print("Warning: No level events received.")
-                return None  # Valor predeterminado
+            # event ya es un dict con 'timer' y 'reset'
+            timer = float(event.get("timer", 0.0))
+            reset = bool(event.get("reset", False))
+            if reset:
+            # Consumimos el evento en el servidor para que no vuelva a aparecer
+                try:
+                    self._http.delete(f"http://127.0.0.1:{self.api_port}/api/level_event")
+                except requests.exceptions.RequestException:
+                    pass
+            return timer, reset
 
-            last = events[-1]
-            return {
-                "timer": float(last("timer", 0.0)),  # Cambiado a 0.0 por defecto
-                "reset": bool(last.get("reset", False))  # Cambiado a False por defecto
-            }
         except requests.exceptions.RequestException as e:
             print("Error fetching level event:", e)
-            return None  # Valor predeterminado en caso de error
+            return None
+        except ValueError as e:
+            print("Error parsing level event data:", e)
+            return None
+        except:
+            return 0.0, False
 
     def get_game_data(self):
         try:
-            response = requests.get("http://127.0.0.1:8000/api/game_data")
+            response = self._http.get("http://127.0.0.1:8000/api/game_data")
             response.raise_for_status()
             game_data_list = response.json()
 
@@ -111,39 +124,66 @@ class CustomGameEnv1(gym.Env):
         self.last_distance_to_goal = None
         self.last_position = None
         self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
+        self.final = False
+        self._reset_consumed = False
 
+        if hasattr(self, "level_timer"):
+            self.level_timer.stop()
+            self.level_timer.start()
+
+        self.episode_reward_details = {key: 0 for key in [
+            "approach_goal", "move_away", "goal_reached",
+            "no_move_penalty", "max_steps_penalty",
+            "penalty_timeout", "reset_penalty"
+        ]}
 
         # Initial state (example structure)
-        game_data = self.get_game_data()
-        if game_data:
-            position = game_data["position"]
-            end_position = game_data["end_position"]
-            self.final = game_data["final"]
-            return np.array(position + end_position, dtype=np.float32), {}
+        gd = self.get_game_data()
+        if gd:
+            obs = np.array(gd["position"] + gd["end_position"], dtype=np.float32)
+            return obs, {}
         else:
-            return np.zeros(4, dtype=np.float32), {}
+            # Asegúrate de coincidir dimensiones if agregas timer
+            return np.zeros(self.observation_space.shape, dtype=np.float32), {}
+        
 
     def step(self, action):
 
         self._send_command(action)
+        self.current_step += 1
         reward = 0  # Initialize reward
 
         game_data = self.get_game_data()
-        le = self.get_level_event()
+        if game_data is None:
+        # antes de que Godot haya enviado datos, devolvemos zeros
+            obs = np.zeros(self.observation_space.shape, dtype=np.float32)
+            return obs, 0.0, False, False, {}
+        
+        timer, reset = self.get_level_event()
+        #evt = self.get_level_event()
+        #if #evt is None:
+            #timer, reset = 0.0, False
+        #else:
+            #timer = float(evt.get("timer", 0.0))
+            #reset = bool(evt.get("reset", False))
+
+        if reset and not self._reset_consumed:
+            # Primer reset de este episodio: lo procesamos
+            self._reset_consumed = True
+        elif reset:
+            # Ya lo consumimos antes, lo ignoramos
+            reset = False
     
         terminated = False
         truncated = False
         # Increment the step count and check if max steps are reached
-        self.current_step += 1
+        
+        position = tuple(game_data["position"])
+        end_position = tuple(game_data["end_position"])
+        self.final = bool(game_data.get("final",False))
+        distance_to_goal = np.sqrt((position[0] - end_position[0])**2 + (position[1] - end_position[1])**2)
 
-        if game_data:
-            position = tuple(game_data["position"])
-            end_position = tuple(game_data["end_position"])
-            self.final = bool(game_data.get("final",False))
-            # Calculate distance to goal
-            distance_to_goal = np.sqrt((position[0] - end_position[0])**2 + (position[1] - end_position[1])**2)
 
-            # Reward or penalty based on movement direction
         if self.last_distance_to_goal is not None:
             if distance_to_goal < self.last_distance_to_goal:
                 # Reward for moving closer to the goal with a stable linear increase
@@ -152,7 +192,7 @@ class CustomGameEnv1(gym.Env):
                 self.episode_reward_details["approach_goal"] += reward_gain
             else:
                 # Small penalty for moving away from the goal
-                reward_penalty = -2
+                reward_penalty = -5
                 reward += reward_penalty
                 self.episode_reward_details["move_away"] += reward_penalty
         else:
@@ -161,11 +201,7 @@ class CustomGameEnv1(gym.Env):
             reward += initial_reward
             self.episode_reward_details["approach_goal"] += initial_reward 
 
-        if le:
-            timer = float(le["timer"])
-            reset = bool(le["reset", False])
-
-        if reset == True:
+        if reset and self.final == False:
             terminated = True
             reset_penalty = -5  # Penalización opcional por reinicio, ajusta según sea necesario
             reward += reset_penalty
@@ -173,20 +209,11 @@ class CustomGameEnv1(gym.Env):
             print("Episode terminated: Reset event triggered by the API.")
             print(f"Episode terminated after {self.current_step} steps.")
             return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False}     
-
-        if  timer <= 0:
-            terminated = True
-            penalty = -10
-            reward += penalty
-            self.episode_reward_details["penalty_timeout"] += penalty
-            print("Episode terminated: Max real-time duration reached.")
-            print(f"Episode terminated after {self.current_step} steps.")
-            return np.array(position + end_position, dtype=np.float32), reward, terminated, truncated, {"final": self.final, "is_success": False} 
         
         # Check if the agent has collided with the door
         if self.final == True:
             terminated = True
-            goal_reward = 15  # Significant reward for reaching the goal
+            goal_reward = 100  # Significant reward for reaching the goal
             reward += goal_reward
             self.episode_reward_details["goal_reached"] += goal_reward
             print("Episode terminated: Collided with the door (end position).")
@@ -207,21 +234,21 @@ class CustomGameEnv1(gym.Env):
         self.last_position = position
         self.last_distance_to_goal = distance_to_goal
 
-        # State as position and end position
-        if game_data:
-            next_state = np.array(game_data["position"] + game_data["end_position"], dtype=np.float32)
-            self.final = game_data["final"]
-        else:
-            next_state = np.zeros(5, dtype=np.float32)
-            self.final = False
-
         # Print reward details at the end of the episode
         if terminated:
             print(f"Reward breakdown for the episode: {self.episode_reward_details}")
             # Reset the reward details for the next episode
             self.episode_reward_details = {key: 0 for key in self.episode_reward_details}
 
-        return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated}
+        obs  = np.array(position + end_position, dtype=np.float32)
+        info = {
+            "final": self.final,
+            "timer": timer,
+            "reset": reset
+        }
+        return obs, reward, terminated, truncated, info
+
+        #return next_state, reward, terminated, truncated, {"final": self.final, "is_success": terminated}
 
     def close(self):
         if self.game_process:
