@@ -20,6 +20,7 @@ class GameData(BaseModel):
     
 # Endpoints para cada dato
 game_data = []
+level_events = []
 
 # Mantiene el último comando enviado por la IA
 command_data = {
@@ -75,6 +76,12 @@ def get_command():
 def level_event(evt: dict):
     # evt = {"timer":0.0, "reset":True}
     entry = {"timestamp": datetime.now().isoformat(), **evt}
-    game_data.append(entry)
+    level_events.append(entry)
     
-    return {"status":"ok"}
+    return {"status":"ok", "entry": entry}  
+
+@app.get("/api/level_event/latest")
+def get_last_level_event():
+    if not level_events:
+        return {"timer": 0.0, "reset": False}
+    return level_events[-1]

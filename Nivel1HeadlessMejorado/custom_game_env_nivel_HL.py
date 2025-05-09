@@ -51,7 +51,7 @@ class CustomGameEnv1(gym.Env):
         Devuelve el último evento de nivel con campos 'timer' y 'reset'.
         """
         try:
-            resp = requests.post(f"http://127.0.0.1:{self.api_port}/api/level_event")
+            resp = requests.get(f"http://127.0.0.1:{self.api_port}/api/level_event/latest")
             resp.raise_for_status()
             events = resp.json()
 
@@ -62,7 +62,7 @@ class CustomGameEnv1(gym.Env):
             last = events[-1]
             return {
                 "timer": float(last("timer", 0.0)),  # Cambiado a 0.0 por defecto
-                "reset": bool(last.post("reset", False))  # Cambiado a False por defecto
+                "reset": bool(last.get("reset", False))  # Cambiado a False por defecto
             }
         except requests.exceptions.RequestException as e:
             print("Error fetching level event:", e)
