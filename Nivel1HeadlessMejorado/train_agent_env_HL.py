@@ -91,7 +91,6 @@ model.learn(total_timesteps=15000, callback=reward_callback)
 
 # Guardar el modelo entrenado
 model.save("dqn_custom_game_model_PPO")
-
 # Graficar las métricas después del entrenamiento
 reward_callback.plot_metrics()
 

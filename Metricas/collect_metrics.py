@@ -4,29 +4,31 @@ import psutil
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
-from custom_game_env_metrics import CustomGameEnv1
+from gymnasium.wrappers import TimeLimit
+from metrics import CustomGameEnv1
 from metrics_wrapper import MetricsWrapper
 
 
 def main():
     # Ruta al ejecutable de Godot y puerto de la API
-    exe_path = "ruta/a/tu_game.exe"
+    exe_path = "C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Metricas\\Abby's Redemption-PruebaHL-Nivel1.console"
     api_port = 8000
 
     # 1) Construir entorno limpio y monitoreado
     base_env = CustomGameEnv1(exe_path=exe_path, api_port=api_port)
     monitored_env = Monitor(base_env, filename=None)
-    env = MetricsWrapper(monitored_env)
+    timed_env    = TimeLimit(monitored_env, max_episode_steps=500)
+    env = MetricsWrapper(timed_env)
 
     # 2) Cargar modelo entrenado (ajusta la ruta)
-    model = PPO.load("ruta/a/tu_modelo.zip", env=env, device="cuda")
+    model = PPO.load("C:\\Users\\ghost\\Documents\\TESIS-REPO\\Tesis\\Metricas\\dqn_custom_game_model_PPO", env=env, device="cuda")
 
     # 3) Preparar CSV de salida
     csv_path = "metrics_report.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
-            "episode", "length", "success",
+            "episode", "success",
             "bug_count", "state_coverage", "action_diversity",
             "episode_time", "fps", "cpu_percent", "mem_mb", "timestamp"
         ])
@@ -46,7 +48,7 @@ def main():
             obs, _, terminated, truncated, info = env.step(action)
 
         # Extraer métricas del episodio
-        length           = info.get("episode", {}).get("l", 0)
+        #length           = info.get("episode", {}).get("l", 0)
         success          = int(info.get("success", False))
         bug_count        = info.get("bug_count", 0)
         state_coverage   = info.get("state_coverage", 0)
@@ -62,7 +64,6 @@ def main():
             writer = csv.writer(f)
             writer.writerow([
                 ep,
-                length,
                 success,
                 bug_count,
                 state_coverage,
