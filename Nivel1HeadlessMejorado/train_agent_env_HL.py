@@ -12,8 +12,8 @@ env = CustomGameEnv1(exe_path, api_port=8000)
 # Verificar el entorno para asegurarse de que es compatible con Stable Baselines3
 check_env(env)
 
-# Configuración del agente DQN
-model = PPO("MlpPolicy", env, verbose=1, learning_rate=1e-4, batch_size=128,n_steps=1024,n_epochs=10, gamma=0.99,gae_lambda=0.95,clip_range=0.2,ent_coef=0.01, device="cuda")
+# Configuración del agente PPO
+model = PPO("MlpPolicy", env, verbose=1, learning_rate=1e-4, batch_size=64,n_steps=512,n_epochs=10, gamma=0.99,gae_lambda=0.95,clip_range=0.2,ent_coef=0.01, device="cuda")
 
 class RewardCallback(BaseCallback):
     def __init__(self, verbose=1):
