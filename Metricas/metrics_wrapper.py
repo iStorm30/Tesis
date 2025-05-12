@@ -27,7 +27,7 @@ class MetricsWrapper(gym.Wrapper):
         self.bugs = set()
         self.states = set()
         self.actions = set()
-        self.success_count   = 0
+        #self.success_count   = 0
         return obs, info
 
     def step(self, action):
@@ -39,8 +39,13 @@ class MetricsWrapper(gym.Wrapper):
             code = info.get("api_error_code", "unknown")
             self.bugs.add(f"api_error_{code}")
 
-        if info.get("success", False):
-            self.success_count += 1
+        #if info.get("success", False):
+            #self.success_count += 1
+
+        inner_sc = info.get("success_count")
+        if inner_sc is not None:
+            self.success_count = inner_sc
+        
 
         # -- Cobertura de estados --
         flat = np.asarray(obs).flatten()

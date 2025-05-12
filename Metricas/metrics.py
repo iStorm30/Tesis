@@ -20,6 +20,7 @@ class CustomGameEnv1(gym.Env):
             low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32
         )
         self.game_process = None
+        self.success_count = 0
         # Sesión HTTP permanente
         self._http = requests.Session()
         self._http.headers.update({"Connection": "keep-alive"})
@@ -91,6 +92,8 @@ class CustomGameEnv1(gym.Env):
         # Arrancar juego solo una vez
         self.launch_game()
         # Obtener la primera observación
+        print("[DEBUG] CustomGameEnv1.reset() llamado. success_count se reinicia.")
+        self.success_count = 0
         gd = self.get_game_data()
         if gd:
             obs = np.array(gd["position"] + gd["end_position"], dtype=np.float32)
@@ -123,23 +126,25 @@ class CustomGameEnv1(gym.Env):
 
         # Inicio de retorno
         obs = np.array(pos + end_pos, dtype=np.float32)
-        terminated = False
-        truncated = False
         info = {"api_error": False, "success": False}
 
         # Reinicio externo (evento de timeout)
         if reset:
-            terminated = True
-            return obs, 0.0, terminated, truncated, info
+            #terminated = True
+            info["reset_event"] = True
 
         # Meta alcanzada
         if final:
-            terminated = True
+            #terminated = True
             info["success"] = True
-            return obs, 0.0, terminated, truncated, info
+            self.success_count += 1
+            # DEBUG: imprime cada vez que haya un “final”
+            print(f"[DEBUG] success_count incrementado: ahora vale {self.success_count}")
+            
+        info["success_count"] = self.success_count
 
         # Paso normal
-        return obs, 0.0, terminated, truncated, info
+        return obs, 0.0, False, False, info
 
     def close(self):
         if self.game_process:

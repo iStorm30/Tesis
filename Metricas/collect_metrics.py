@@ -17,7 +17,7 @@ def main():
     # 1) Construir entorno limpio y monitoreado
     base_env = CustomGameEnv1(exe_path=exe_path, api_port=api_port)
     monitored_env = Monitor(base_env, filename=None)
-    timed_env    = TimeLimit(monitored_env, max_episode_steps=500)
+    timed_env    = TimeLimit(monitored_env, max_episode_steps=250)
     env = MetricsWrapper(timed_env)
 
     # 2) Cargar modelo entrenado (ajusta la ruta)
@@ -28,13 +28,13 @@ def main():
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
-            "episode", "success",
+            "episode", "success_count",
             "bug_count", "state_coverage", "action_diversity",
             "episode_time", "fps", "cpu_percent", "mem_mb", "timestamp"
         ])
 
     process = psutil.Process()
-    num_episodes = 100  # Ajusta según lo que necesites
+    num_episodes = 5  # Ajusta según lo que necesites
 
     # 4) Loop de evaluación
     for ep in range(1, num_episodes + 1):
@@ -49,7 +49,8 @@ def main():
 
         # Extraer métricas del episodio
         #length           = info.get("episode", {}).get("l", 0)
-        success          = int(info.get("success", False))
+        #success          = int(info.get("success", False))
+        success_count    = info.get("success_count", 0)
         bug_count        = info.get("bug_count", 0)
         state_coverage   = info.get("state_coverage", 0)
         action_diversity = info.get("action_diversity", 0)
@@ -64,7 +65,8 @@ def main():
             writer = csv.writer(f)
             writer.writerow([
                 ep,
-                success,
+                #success,
+                success_count,
                 bug_count,
                 state_coverage,
                 action_diversity,
@@ -75,7 +77,7 @@ def main():
                 timestamp
             ])
 
-        print(f"Episodio {ep}: éxito={success}, bugs={bug_count}, cobertura={state_coverage}")
+        print(f"Episodio {ep}: éxito={success_count}, bugs={bug_count}, cobertura={state_coverage}")
 
     print(f"Evaluación completa. Métricas guardadas en {csv_path}")
 
