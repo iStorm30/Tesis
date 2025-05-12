@@ -17,7 +17,7 @@ def main():
     # 1) Construir entorno limpio y monitoreado
     base_env = CustomGameEnv1(exe_path=exe_path, api_port=api_port)
     monitored_env = Monitor(base_env, filename=None)
-    timed_env    = TimeLimit(monitored_env, max_episode_steps=250)
+    timed_env    = TimeLimit(monitored_env, max_episode_steps=15000)
     env = MetricsWrapper(timed_env)
 
     # 2) Cargar modelo entrenado (ajusta la ruta)
@@ -34,7 +34,7 @@ def main():
         ])
 
     process = psutil.Process()
-    num_episodes = 5  # Ajusta según lo que necesites
+    num_episodes = 100  # Ajusta según lo que necesites
 
     # 4) Loop de evaluación
     for ep in range(1, num_episodes + 1):

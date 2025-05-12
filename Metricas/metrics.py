@@ -29,8 +29,8 @@ class CustomGameEnv1(gym.Env):
         cmd = {
             "left":  bool(action == 0),
             "right": bool(action == 1),
-            #"jump":  bool(action == 2),
-            #"attack": bool(action == 3)
+            "jump":  bool(action == 2),
+            "attack": bool(action == 3)
         }
         try:
             self._http.post(
