@@ -19,58 +19,25 @@ class MetricsWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
-        # Inicializar contadores
+        # Inicializar métricas de episodio
         self.episode_start = time.time()
         self.step_count = 0
         self.prev_pos = self._get_pos(obs)
         self.stuck_counter = 0
         self.bugs = set()
         self.states = set()
-        self.actions = set()
-        #self.success_count   = 0
+        # Asegurar clave de conteo de éxitos
+        info.setdefault('success_count', 0)
         return obs, info
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
         self.step_count += 1
 
-        # -- Detección de bugs --
-        if info.get("api_error", False):
-            code = info.get("api_error_code", "unknown")
-            self.bugs.add(f"api_error_{code}")
-
-        #if info.get("success", False):
-            #self.success_count += 1
-
-        inner_sc = info.get("success_count")
-        if inner_sc is not None:
-            self.success_count = inner_sc
-        
-
-        # -- Cobertura de estados --
-        flat = np.asarray(obs).flatten()
-        self.states.add(tuple(flat.tolist()))
-
-        # -- Diversidad de acciones --
-        # Manejo de scalars, 0-d arrays y arrays multidimensionales
-        if isinstance(action, np.ndarray):
-            if action.shape == ():
-                action_id = action.item()
-            else:
-                action_id = tuple(action.flatten().tolist())
-        elif np.isscalar(action):
-            action_id = int(action)
-        else:
-            try:
-                action_id = tuple(action)
-            except TypeError:
-                action_id = action
-        self.actions.add(action_id)
-
-        # -- Stuck & out_of_bounds --
+        # Cobertura de estados
         pos = self._get_pos(obs)
-        if not self._in_bounds(pos):
-            self.bugs.add("out_of_bounds")
+        self.states.add(pos)
+        # Detección de stuck
         if pos == self.prev_pos:
             self.stuck_counter += 1
             if self.stuck_counter >= self.stuck_threshold:
@@ -79,19 +46,44 @@ class MetricsWrapper(gym.Wrapper):
             self.stuck_counter = 0
         self.prev_pos = pos
 
-        # Al terminar episodio, inyectar métricas
+        # Al terminar episodio, inyectar métricas y flags
         if terminated or truncated:
             ep_time = time.time() - self.episode_start
             fps = self.step_count / ep_time if ep_time > 0 else 0.0
+            state_coverage = len(self.states)
+            action_diversity = len(set(info.get('actions', [])))
+            # Métricas base
             info.update({
-                "bug_count": len(self.bugs),
-                "state_coverage": len(self.states),
-                "action_diversity": len(self.actions),
-                "success_count":    self.success_count,
-                "success_rate":     self.success_count / self.step_count if self.step_count > 0 else 0.0,
-                "episode_time": ep_time,
-                "fps": fps
+                'bug_count': len(self.bugs),
+                'state_coverage': state_coverage,
+                'action_diversity': action_diversity,
+                'episode_time': ep_time,
+                'fps': fps,
+                'cpu_percent': self.process.cpu_percent(interval=None),
+                'mem_mb': self.process.memory_info().rss / (1024**2),
             })
+            # Flags para detección de bugs externos
+            flags = {
+                'restart_triggered': info.get('success_count', 0) > 0,
+                'variables_reset': info.get('variables_reset', False),
+                'respawn_position_invalid': info.get('respawn_position_invalid', False),
+                'entered_portal': info.get('entered_portal', False),
+                'portal_collision': info.get('portal_collision', True),
+                'stuck': 'stuck' in self.bugs,
+                'ghost_collision': info.get('ghost_collision', False),
+                'through_walls': info.get('through_walls', False),
+                'enemy_movement': info.get('enemy_movement', True),
+                'enemy_reposition': info.get('enemy_reposition', False),
+                'enemy_persistent': info.get('enemy_persistent', False),
+                'slow_response': info.get('slow_response', False),
+                'timeout_error': info.get('timeout_error', False),
+                'freezing': info.get('freezing', False),
+                'dead_end': info.get('dead_end', False),
+                'incomplete_level': info.get('incomplete_level', False),
+                'infinite_loop': info.get('infinite_loop', False),
+                'api_data_correct': info.get('api_data_correct', True),
+            }
+            info.update(flags)
         return obs, reward, terminated, truncated, info
 
     def _get_pos(self, obs):
